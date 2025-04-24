@@ -1,7 +1,9 @@
 name: auto_height_webview
-description: "A new Flutter package project."
+description: "A Flutter package for rendering HTML content with automatic height adjustment across platforms."
 version: 0.0.1
-homepage: None
+homepage: https://github.com/Rishav1995-roy/auto_height_webview
+repository: https://github.com/Rishav1995-roy/auto_height_webview
+issue_tracker: https://github.com/Rishav1995-roy/auto_height_webview/issues
 
 environment:
   sdk: ^3.6.0
