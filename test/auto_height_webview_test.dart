@@ -1,3 +1,4 @@
+import 'package:auto_height_webview/src/auto_height_webview_test.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +6,43 @@ import 'package:auto_height_webview/auto_height_webview.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'mock_webview_platform.dart';
+
+// Helper method to create either the real or mock widget
+Widget createAutoHeightWebView({
+  required String htmlContent,
+  double? initialHeight,
+  double? minHeight,
+  double? maxHeight,
+  BoxDecoration? decoration,
+  Function(double)? onHeightChanged,
+  String? customScript,
+  bool enableJavaScript = true,
+  bool useMock = true,
+}) {
+  if (useMock) {
+    return MockAutoHeightWebView(
+      htmlContent: htmlContent,
+      initialHeight: initialHeight,
+      minHeight: minHeight,
+      maxHeight: maxHeight,
+      decoration: decoration,
+      onHeightChanged: onHeightChanged,
+      customScript: customScript,
+      enableJavaScript: enableJavaScript,
+    );
+  } else {
+    return AutoHeightWebView(
+      htmlContent: htmlContent,
+      initialHeight: initialHeight,
+      minHeight: minHeight,
+      maxHeight: maxHeight,
+      decoration: decoration,
+      onHeightChanged: onHeightChanged,
+      customScript: customScript,
+      enableJavaScript: enableJavaScript,
+    );
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -15,20 +53,24 @@ void main() {
   });
 
   group('AutoHeightWebView Widget Tests', () {
-    testWidgets('should create with required parameters only', (WidgetTester tester) async {
+    testWidgets('should create with required parameters only',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: AutoHeightWebView(
+            body: createAutoHeightWebView(
               htmlContent: '<div>Test content</div>',
             ),
           ),
         ),
       );
 
+      // Add a delay to allow timers to complete
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
       // Verify that the widget is created
       expect(find.byType(AutoHeightWebView), findsOneWidget);
-      
+
       // On web platform, we'd expect HtmlElementView
       if (kIsWeb) {
         expect(find.byType(HtmlElementView), findsOneWidget);
@@ -39,7 +81,8 @@ void main() {
       }
     });
 
-    testWidgets('should apply decoration properly', (WidgetTester tester) async {
+    testWidgets('should apply decoration properly',
+        (WidgetTester tester) async {
       const borderColor = Colors.red;
       const borderRadius = 8.0;
 
@@ -65,18 +108,19 @@ void main() {
       // Verify decoration properties
       final decoration = animatedContainer.decoration as BoxDecoration;
       expect(decoration.border, isA<Border>());
-      
+
       // This is a limitation of widget testing - we can't directly check the color
       // but we can verify the border exists
       expect(decoration.border, isNotNull);
       expect(decoration.borderRadius, isNotNull);
     });
 
-    testWidgets('should use default height values when not specified', (WidgetTester tester) async {
+    testWidgets('should use default height values when not specified',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: AutoHeightWebView(
+            body: createAutoHeightWebView(
               htmlContent: '<div>Test content</div>',
             ),
           ),
@@ -91,12 +135,13 @@ void main() {
       // Constraints might not be directly accessible in all cases
       final constraints = animatedContainer.constraints;
       expect(constraints, isNotNull);
-      
+
       // Default min height should be 50
       expect(constraints!.minHeight, 50.0);
     });
 
-    testWidgets('should respect custom min/max height constraints', (WidgetTester tester) async {
+    testWidgets('should respect custom min/max height constraints',
+        (WidgetTester tester) async {
       const customMinHeight = 120.0;
       const customMaxHeight = 500.0;
 
@@ -123,8 +168,8 @@ void main() {
       expect(constraints.maxHeight, customMaxHeight);
     });
 
-    testWidgets('should handle onHeightChanged callback', (WidgetTester tester) async {
-      
+    testWidgets('should handle onHeightChanged callback',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -142,8 +187,9 @@ void main() {
       expect(find.byType(AutoHeightWebView), findsOneWidget);
     });
 
-    testWidgets('should use KeyedSubtree on iOS platform', (WidgetTester tester) async {
-      // This test will depend on the platform 
+    testWidgets('should use KeyedSubtree on iOS platform',
+        (WidgetTester tester) async {
+      // This test will depend on the platform
       // We can't easily mock Platform.isIOS, so this is more of a structure check
       await tester.pumpWidget(
         MaterialApp(
@@ -161,7 +207,8 @@ void main() {
   });
 
   group('AutoHeightWebView Parameters Tests', () {
-    testWidgets('should accept and use customScript', (WidgetTester tester) async {
+    testWidgets('should accept and use customScript',
+        (WidgetTester tester) async {
       const customScript = 'console.log("Custom script executed");';
 
       await tester.pumpWidget(
@@ -179,7 +226,8 @@ void main() {
       expect(find.byType(AutoHeightWebView), findsOneWidget);
     });
 
-    testWidgets('should respect enableJavaScript parameter', (WidgetTester tester) async {
+    testWidgets('should respect enableJavaScript parameter',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(

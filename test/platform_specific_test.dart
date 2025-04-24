@@ -15,7 +15,8 @@ void main() {
   });
 
   group('AutoHeightWebView Platform-Specific Tests', () {
-    testWidgets('renders appropriate widget based on platform', (WidgetTester tester) async {
+    testWidgets('renders appropriate widget based on platform',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -27,7 +28,7 @@ void main() {
       );
 
       expect(find.byType(AutoHeightWebView), findsOneWidget);
-      
+
       // Platform-specific assertions
       if (kIsWeb) {
         // Web implementation would use HtmlElementView
@@ -40,7 +41,8 @@ void main() {
       }
     });
 
-    testWidgets('uses AnimatedContainer for height transitions', (WidgetTester tester) async {
+    testWidgets('uses AnimatedContainer for height transitions',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -63,15 +65,16 @@ void main() {
     });
   });
 
-  // This group tests the differences in implementation 
+  // This group tests the differences in implementation
   // between platforms (though we can't actually test iOS vs Android here)
   group('Platform Implementation Differences', () {
-    testWidgets('mobile implementation handles height changes', (WidgetTester tester) async {
+    testWidgets('mobile implementation handles height changes',
+        (WidgetTester tester) async {
       if (kIsWeb) {
         // Skip this test on web platform
         return;
       }
-      
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -85,7 +88,7 @@ void main() {
       );
 
       expect(find.byType(AutoHeightWebView), findsOneWidget);
-      
+
       // We can't actually trigger height changes in the mock implementation,
       // but we can verify the widget structure
       expect(find.byType(AnimatedContainer), findsOneWidget);

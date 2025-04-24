@@ -59,9 +59,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ''',
               ),
             ),
-            
-            
-            
+
             // Example 3: With some parameters
             // const Padding(
             //   padding: EdgeInsets.all(16.0),
@@ -97,7 +95,6 @@ class _MyHomePageState extends State<MyHomePage> {
             //     ),
             //   ),
             // ),
-            
           ],
         ),
       ),

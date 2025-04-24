@@ -52,7 +52,8 @@ class MockWebViewController extends PlatformWebViewController {
   Future<String?> currentUrl() async => 'https://mock.url';
 
   @override
-  Future<void> addJavaScriptChannel(JavaScriptChannelParams javaScriptChannelParams) async {}
+  Future<void> addJavaScriptChannel(
+      JavaScriptChannelParams javaScriptChannelParams) async {}
 
   @override
   Future<void> removeJavaScriptChannel(String javaScriptChannelName) async {}
@@ -94,7 +95,8 @@ class MockNavigationDelegate extends PlatformNavigationDelegate {
   MockNavigationDelegate(super.params) : super.implementation();
 
   @override
-  Future<void> setOnNavigationRequest(NavigationRequestCallback onNavigationRequest) async {}
+  Future<void> setOnNavigationRequest(
+      NavigationRequestCallback onNavigationRequest) async {}
 
   @override
   Future<void> setOnPageStarted(PageEventCallback onPageStarted) async {}
@@ -109,5 +111,6 @@ class MockNavigationDelegate extends PlatformNavigationDelegate {
   Future<void> setOnProgress(ProgressCallback onProgress) async {}
 
   @override
-  Future<void> setOnWebResourceError(WebResourceErrorCallback onWebResourceError) async {}
+  Future<void> setOnWebResourceError(
+      WebResourceErrorCallback onWebResourceError) async {}
 }

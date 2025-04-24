@@ -52,10 +52,12 @@ class AutoHeightWebView extends StatefulWidget {
   State<AutoHeightWebView> createState() => _AutoHeightWebViewState();
 }
 
-class _AutoHeightWebViewState extends State<AutoHeightWebView> {
+class _AutoHeightWebViewState extends State<AutoHeightWebView>
+    with SingleTickerProviderStateMixin {
   late double _height;
   bool _isLoading = true;
   WebViewController? _controller;
+  Timer? _initTimer;
   final String _heightMeasurementChannel = 'HeightMeasurementChannel';
   final bool _isIOS = !kIsWeb && Platform.isIOS;
   final UniqueKey _viewKey = UniqueKey();
@@ -68,6 +70,8 @@ class _AutoHeightWebViewState extends State<AutoHeightWebView> {
 
   @override
   void dispose() {
+    _initTimer?.cancel();
+    _initTimer = null;
     if (!kIsWeb) {
       // Special handling for iOS WebViews
       if (_isIOS) {
@@ -92,7 +96,7 @@ class _AutoHeightWebViewState extends State<AutoHeightWebView> {
     if (!kIsWeb) {
       // iOS-specific delay - needs to be longer than for Android
       final delay = _isIOS ? 200 : 50;
-      Future.delayed(Duration(milliseconds: delay), () {
+      _initTimer = Timer(Duration(milliseconds: delay), () {
         if (mounted) {
           _setupMobileController();
         }

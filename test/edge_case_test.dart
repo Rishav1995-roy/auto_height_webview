@@ -1,8 +1,46 @@
+import 'package:auto_height_webview/src/auto_height_webview_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:auto_height_webview/auto_height_webview.dart';
 import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
 import 'mock_webview_platform.dart';
+
+// Helper method to create either the real or mock widget
+Widget createAutoHeightWebView({
+  required String htmlContent,
+  double? initialHeight,
+  double? minHeight,
+  double? maxHeight,
+  BoxDecoration? decoration,
+  Function(double)? onHeightChanged,
+  String? customScript,
+  bool enableJavaScript = true,
+  bool useMock = true,
+}) {
+  if (useMock) {
+    return MockAutoHeightWebView(
+      htmlContent: htmlContent,
+      initialHeight: initialHeight,
+      minHeight: minHeight,
+      maxHeight: maxHeight,
+      decoration: decoration,
+      onHeightChanged: onHeightChanged,
+      customScript: customScript,
+      enableJavaScript: enableJavaScript,
+    );
+  } else {
+    return AutoHeightWebView(
+      htmlContent: htmlContent,
+      initialHeight: initialHeight,
+      minHeight: minHeight,
+      maxHeight: maxHeight,
+      decoration: decoration,
+      onHeightChanged: onHeightChanged,
+      customScript: customScript,
+      enableJavaScript: enableJavaScript,
+    );
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -27,10 +65,11 @@ void main() {
       expect(find.byType(AutoHeightWebView), findsOneWidget);
     });
 
-    testWidgets('handles extremely large HTML content', (WidgetTester tester) async {
+    testWidgets('handles extremely large HTML content',
+        (WidgetTester tester) async {
       // Generate a large HTML string
       final largeHtml = '<div>${'Test content<br>' * 1000}</div>';
-      
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -66,7 +105,8 @@ void main() {
       expect(animatedContainer.constraints!.minHeight, 50.0);
     });
 
-    testWidgets('handles JavaScript errors gracefully', (WidgetTester tester) async {
+    testWidgets('handles JavaScript errors gracefully',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -82,9 +122,10 @@ void main() {
       expect(find.byType(AutoHeightWebView), findsOneWidget);
     });
 
-    testWidgets('handles rapid rebuilds without error', (WidgetTester tester) async {
+    testWidgets('handles rapid rebuilds without error',
+        (WidgetTester tester) async {
       // This test attempts to simulate hot reload or rapid state changes
-      
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -94,7 +135,7 @@ void main() {
           ),
         ),
       );
-      
+
       // Force a rebuild with different content
       await tester.pumpWidget(
         MaterialApp(
@@ -105,7 +146,7 @@ void main() {
           ),
         ),
       );
-      
+
       // And again
       await tester.pumpWidget(
         MaterialApp(
@@ -123,7 +164,8 @@ void main() {
   });
 
   group('AutoHeightWebView Null Safety Tests', () {
-    testWidgets('handles null decoration gracefully', (WidgetTester tester) async {
+    testWidgets('handles null decoration gracefully',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -140,7 +182,8 @@ void main() {
       expect(find.byType(AnimatedContainer), findsOneWidget);
     });
 
-    testWidgets('handles null onHeightChanged callback', (WidgetTester tester) async {
+    testWidgets('handles null onHeightChanged callback',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(

@@ -86,3 +86,5 @@ MIT
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+[![pub package](https://img.shields.io/pub/v/auto_height_webview.svg)](https://pub.dev/packages/auto_height_webview)
