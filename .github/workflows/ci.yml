@@ -15,23 +15,28 @@ concurrency:
 
 jobs:
   analyze-and-test:
-    name: Analyze and test (Flutter ${{ matrix.flutter }})
+    name: Analyze and test (Flutter ${{ matrix.label }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         # Oldest supported release (pubspec lower bound) and latest stable.
-        flutter: ['3.27.4', 'stable']
+        # An empty version means "latest on the stable channel".
+        include:
+          - label: '3.27.4'
+            version: '3.27.4'
+          - label: stable
+            version: ''
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ matrix.flutter == 'stable' && '' || matrix.flutter }}
+          flutter-version: ${{ matrix.version }}
           channel: stable
           cache: true
       - run: flutter pub get
       # The formatter style changed in Dart 3.7, so only check it on latest stable.
-      - if: matrix.flutter == 'stable'
+      - if: matrix.label == 'stable'
         run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test --coverage
