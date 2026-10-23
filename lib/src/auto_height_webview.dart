@@ -1,41 +1,31 @@
-import 'dart:async';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show Factory;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
-// Conditionally import based on platform
-import 'web_view_impl.dart' if (dart.library.html) 'web_view_impl_web.dart';
+// Mobile (webview_flutter) by default, iframe implementation on web.
+import 'web_view_impl.dart'
+    if (dart.library.js_interop) 'web_view_impl_web.dart';
 
-/// A WebView widget that automatically adjusts its height based on content.
+/// A widget that renders HTML and sizes itself to the content height.
+///
+/// On Android, iOS and macOS it uses `webview_flutter`; on the web it renders
+/// the HTML inside an `<iframe>`. Both report the document height through an
+/// injected script, so the widget can live inside a `ListView`,
+/// `SingleChildScrollView` or `Column` without bounded height.
+///
+/// Live height tracking requires JavaScript. With `enableJavaScript: false`
+/// the height stays at [initialHeight] on mobile; on the web it is measured
+/// once from the parent page when the iframe loads.
+///
+/// ```dart
+/// AutoHeightWebView(
+///   htmlContent: '<h1>Hello</h1><p>World</p>',
+///   maxHeight: 600,
+///   onLinkTap: (url) => launchUrl(Uri.parse(url)),
+/// )
+/// ```
 class AutoHeightWebView extends StatefulWidget {
-  /// The HTML content to display.
-  final String htmlContent;
-
-  /// Initial height before content is measured.
-  /// Defaults to 100.0 if not provided.
-  final double? initialHeight;
-
-  /// Minimum height constraint for the WebView.
-  /// Defaults to 50.0 if not provided.
-  final double? minHeight;
-
-  /// Maximum height constraint for the WebView.
-  final double? maxHeight;
-
-  /// Callback fired when height changes.
-  final Function(double height)? onHeightChanged;
-
-  /// Additional styling for the WebView container.
-  final BoxDecoration? decoration;
-
-  /// JavaScript to execute after page load.
-  final String? customScript;
-
-  /// Whether to allow JavaScript execution.
-  final bool enableJavaScript;
-
-  /// Creating an AutoHeightWebView with HTML content
+  /// Creates a widget that shows [htmlContent] and fits its height.
   const AutoHeightWebView({
     super.key,
     required this.htmlContent,
@@ -46,214 +36,91 @@ class AutoHeightWebView extends StatefulWidget {
     this.decoration,
     this.customScript,
     this.enableJavaScript = true,
+    this.css,
+    this.useDefaultStyles = true,
+    this.baseUrl,
+    this.onLinkTap,
+    this.allowNavigation = false,
+    this.loadingBuilder,
+    this.onPageFinished,
+    this.scrollWhenClamped = false,
+    this.gestureRecognizers,
+    this.animationDuration = const Duration(milliseconds: 300),
+    this.animationCurve = Curves.easeInOut,
   });
 
-  @override
-  State<AutoHeightWebView> createState() => _AutoHeightWebViewState();
-}
+  /// The HTML to display. May be a fragment or a full document; a full
+  /// document (starting with `<html` or `<!doctype`) is not wrapped again.
+  final String htmlContent;
 
-class _AutoHeightWebViewState extends State<AutoHeightWebView>
-    with SingleTickerProviderStateMixin {
-  late double _height;
-  bool _isLoading = true;
-  WebViewController? _controller;
-  Timer? _initTimer;
-  final String _heightMeasurementChannel = 'HeightMeasurementChannel';
-  final bool _isIOS = !kIsWeb && Platform.isIOS;
-  final UniqueKey _viewKey = UniqueKey();
+  /// Height used before the content is measured. Defaults to 100.
+  final double? initialHeight;
 
-  // Safe defaults
-  double get _safeInitialHeight => widget.initialHeight ?? 100.0;
-  double get _safeMinHeight => widget.minHeight ?? 50.0;
-  BoxDecoration get _safeDecoration =>
-      widget.decoration ?? const BoxDecoration(color: Colors.transparent);
+  /// Minimum height. Defaults to 50.
+  final double? minHeight;
 
-  @override
-  void dispose() {
-    _initTimer?.cancel();
-    _initTimer = null;
-    if (!kIsWeb) {
-      // Special handling for iOS WebViews
-      if (_isIOS) {
-        // Ensure we give the platform enough time to clean up
-        _controller = null;
-        Future.delayed(const Duration(milliseconds: 250), () {
-          // This is intentionally empty - just ensuring time for cleanup
-        });
-      } else {
-        _controller?.clearCache();
-      }
-    }
-    super.dispose();
-  }
+  /// Maximum height. When the content is taller, the widget stops growing
+  /// (see [scrollWhenClamped]). Unbounded when null.
+  final double? maxHeight;
 
-// Also, update the initState method to ensure we're not recreating an existing WebView
-  @override
-  void initState() {
-    super.initState();
-    _height = _safeInitialHeight;
+  /// Called with the new (clamped) height whenever it changes.
+  final ValueChanged<double>? onHeightChanged;
 
-    if (!kIsWeb) {
-      // iOS-specific delay - needs to be longer than for Android
-      final delay = _isIOS ? 200 : 50;
-      _initTimer = Timer(Duration(milliseconds: delay), () {
-        if (mounted) {
-          _setupMobileController();
-        }
-      });
-    }
-  }
+  /// Decoration of the container around the WebView.
+  final BoxDecoration? decoration;
 
-  void _setupMobileController() {
-    final controller = WebViewController();
-    controller
-      ..setJavaScriptMode(widget.enableJavaScript
-          ? JavaScriptMode.unrestricted
-          : JavaScriptMode.disabled)
-      ..setBackgroundColor(Colors.transparent)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (_) => _injectHeightMeasurementScript(),
-        ),
-      )
-      ..addJavaScriptChannel(
-        _heightMeasurementChannel,
-        onMessageReceived: (JavaScriptMessage message) {
-          _updateHeight(double.tryParse(message.message) ?? _safeInitialHeight);
-        },
-      );
+  /// JavaScript run after the page has loaded.
+  final String? customScript;
 
-    _controller = controller;
+  /// Whether JavaScript is enabled. Live height measurement needs it. When
+  /// false, the height stays at [initialHeight] on mobile; on the web it is
+  /// measured once, at load, from the parent page.
+  final bool enableJavaScript;
 
-    // Load HTML content
-    _loadHtmlContent();
-  }
+  /// Extra CSS appended to the document `<head>`.
+  final String? css;
 
-  void _loadHtmlContent() {
-    if (_controller == null) return;
+  /// Whether to reset the body margin/padding and use a sans-serif font.
+  /// When false, no styles are forced on the document.
+  final bool useDefaultStyles;
 
-    // Inject meta viewport tag for proper mobile rendering
-    final htmlWithViewport = '''
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-          <style>
-            body {
-              margin: 0;
-              padding: 0;
-              font-family: sans-serif;
-              overflow-x: hidden;
-              width: 100%;
-            }
-          </style>
-        </head>
-        <body>
-          ${widget.htmlContent}
-        </body>
-      </html>
-    ''';
+  /// Base URL for relative links and resources. Passed to `loadHtmlString`
+  /// on mobile and used as `<base href>` on web.
+  final String? baseUrl;
 
-    _controller!.loadHtmlString(htmlWithViewport);
-  }
+  /// Called with the URL when the user taps a link or the page tries to
+  /// navigate away.
+  final ValueChanged<String>? onLinkTap;
 
-  void _injectHeightMeasurementScript() {
-    if (_controller == null) return;
+  /// Whether navigation inside the view is allowed after the first load.
+  /// When false, navigation is blocked and only reported to [onLinkTap];
+  /// when true it proceeds ([onLinkTap] is still called).
+  final bool allowNavigation;
 
-    final script = '''
-      function updateHeight() {
-        const height = Math.max(
-          document.body.scrollHeight,
-          document.body.offsetHeight,
-          document.documentElement.clientHeight,
-          document.documentElement.scrollHeight,
-          document.documentElement.offsetHeight
-        );
-        $_heightMeasurementChannel.postMessage(height);
-      }
-      
-      // Initial measurement
-      updateHeight();
-      
-      // Set up mutation observer to detect content changes
-      const observer = new MutationObserver(updateHeight);
-      observer.observe(document.body, { 
-        attributes: true, 
-        childList: true, 
-        subtree: true 
-      });
-      
-      // Handle window resize events
-      window.addEventListener('resize', updateHeight);
-      
-      // Handle image and media loading
-      window.addEventListener('load', updateHeight);
-      
-      // Custom script if provided
-      ${widget.customScript ?? ''}
-    ''';
+  /// Builds the loading indicator shown until the page finishes loading.
+  /// Defaults to a centered [CircularProgressIndicator]; return
+  /// `SizedBox.shrink()` to show nothing.
+  final WidgetBuilder? loadingBuilder;
 
-    _controller!.runJavaScript(script);
-    setState(() => _isLoading = false);
-  }
+  /// Called once the page has finished loading.
+  final VoidCallback? onPageFinished;
 
-  void _updateHeight(double newHeight) {
-    if (newHeight != _height && mounted) {
-      setState(() => _height = _constrainHeight(newHeight));
-      widget.onHeightChanged?.call(_height);
-    }
-  }
+  /// When true and [maxHeight] is reached, the content scrolls inside the
+  /// view (mobile: vertical drags go to the WebView; web: iframe scrolls).
+  final bool scrollWhenClamped;
 
-  double _constrainHeight(double height) {
-    double constrainedHeight = height;
+  /// Gestures the WebView claims (mobile only). Overrides the default, which
+  /// is empty, or a vertical drag when [scrollWhenClamped] applies.
+  final Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers;
 
-    if (height < _safeMinHeight) {
-      constrainedHeight = _safeMinHeight;
-    } else if (widget.maxHeight != null && height > widget.maxHeight!) {
-      constrainedHeight = widget.maxHeight!;
-    }
+  /// Duration of the height animation.
+  final Duration animationDuration;
 
-    return constrainedHeight;
-  }
+  /// Curve of the height animation.
+  final Curve animationCurve;
 
   @override
-  Widget build(BuildContext context) {
-    if (kIsWeb) {
-      return WebViewImplementation(
-        htmlContent: widget.htmlContent,
-        initialHeight: _safeInitialHeight,
-        minHeight: _safeMinHeight,
-        maxHeight: widget.maxHeight,
-        onHeightChanged: widget.onHeightChanged,
-        decoration: widget.decoration,
-        customScript: widget.customScript,
-        enableJavaScript: widget.enableJavaScript,
-      );
-    }
-
-    // For iOS, wrap the WebViewWidget in a key-specific container
-    Widget webViewContent = _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _controller != null
-            ? _isIOS
-                ? KeyedSubtree(
-                    key: _viewKey,
-                    child: WebViewWidget(controller: _controller!),
-                  )
-                : WebViewWidget(controller: _controller!)
-            : const SizedBox();
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      height: _height,
-      constraints: BoxConstraints(
-        minHeight: _safeMinHeight,
-        maxHeight: widget.maxHeight ?? double.infinity,
-      ),
-      decoration: _safeDecoration,
-      child: webViewContent,
-    );
-  }
+  // The state class depends on the platform (mobile WebView or web iframe).
+  // ignore: no_logic_in_create_state
+  State<AutoHeightWebView> createState() => createPlatformState();
 }
