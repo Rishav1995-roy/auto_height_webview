@@ -1,6 +1,6 @@
 name: auto_height_webview
 description: "A Flutter widget that renders HTML and automatically sizes itself to the content height on Android, iOS, macOS and web."
-version: 0.0.2
+version: 0.0.3
 homepage: https://github.com/Rishav1995-roy/auto_height_webview
 repository: https://github.com/Rishav1995-roy/auto_height_webview
 issue_tracker: https://github.com/Rishav1995-roy/auto_height_webview/issues
@@ -10,6 +10,16 @@ topics:
   - html
   - auto-height
   - widget
+
+screenshots:
+  - description: Demo - cards sizing themselves to HTML content, images and dynamic changes.
+    path: doc/demo.gif
+  - description: Example app in light mode.
+    path: doc/screenshot_light.png
+  - description: Example app in dark mode with themed CSS and a full HTML document.
+    path: doc/screenshot_dark.png
+  - description: Min/max height with inner scrolling, links and images.
+    path: doc/screenshot_features.png
 
 platforms:
   android:
