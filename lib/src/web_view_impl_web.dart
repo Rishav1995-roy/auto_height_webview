@@ -1,208 +1,181 @@
-// Implementation for web platform only
-// This file is only imported in web environments
-import 'dart:async';
-import 'dart:math' as math;
-// These imports will only be resolved on web platforms
-import 'dart:html' as html;
+// Web implementation: an <iframe> using package:web + dart:js_interop, so it
+// compiles to both JS and WebAssembly. Imported only where
+// `dart.library.js_interop` is available.
+import 'dart:js_interop';
 import 'dart:ui_web' as ui_web;
+
 import 'package:flutter/material.dart';
+import 'package:web/web.dart' as web;
 
-class WebViewImplementation extends StatefulWidget {
-  final String htmlContent;
-  final double initialHeight;
-  final double minHeight;
-  final double? maxHeight;
-  final Function(double height)? onHeightChanged;
-  final BoxDecoration? decoration;
-  final String? customScript;
-  final bool enableJavaScript;
+import 'auto_height_webview.dart';
+import 'html_document.dart';
 
-  const WebViewImplementation({
-    super.key,
-    required this.htmlContent,
-    required this.initialHeight,
-    required this.minHeight,
-    this.maxHeight,
-    this.onHeightChanged,
-    this.decoration,
-    this.customScript,
-    required this.enableJavaScript,
-  });
+/// Creates the state used on the web.
+State<AutoHeightWebView> createPlatformState() => _WebState();
 
-  @override
-  State<WebViewImplementation> createState() => _WebViewImplementationState();
-}
-
-class _WebViewImplementationState extends State<WebViewImplementation> {
-  late String _viewId;
-  late html.IFrameElement _iframeElement;
+class _WebState extends State<AutoHeightWebView> {
+  late final String _id;
+  late final String _viewType;
+  late final web.HTMLIFrameElement _iframe;
+  late final JSFunction _messageListener;
+  late final JSFunction _loadListener;
+  late double _rawHeight;
   late double _height;
-  StreamSubscription? _subscription;
-  final _heightStreamController = StreamController<double>();
+  bool _loading = true;
 
-  // Safe defaults
-  BoxDecoration get _safeDecoration =>
-      widget.decoration ?? const BoxDecoration(color: Colors.transparent);
+  double get _min => widget.minHeight ?? 50.0;
 
   @override
   void initState() {
     super.initState();
-    _height = widget.initialHeight;
-    _setupWebView();
-  }
+    _id = generateInstanceId();
+    _viewType = 'auto-height-webview-$_id';
+    _rawHeight = widget.initialHeight ?? 100.0;
+    _height = clampHeight(_rawHeight, _min, widget.maxHeight);
 
-  void _setupWebView() {
-    // Create a unique ID for this instance using both timestamp and a random value
-    // This helps prevent ID collisions during hot reload
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final random = 10000 + (100000 * math.Random().nextDouble()).toInt();
-    _viewId = 'auto-height-webview-$timestamp-$random';
-
-    // Create an iframe element
-    _iframeElement = html.IFrameElement()
+    _iframe = web.HTMLIFrameElement()
       ..style.border = 'none'
-      ..style.height = '${widget.initialHeight}px'
       ..style.width = '100%'
-      ..style.overflow = 'hidden'
-      ..srcdoc = _getHtmlContent()
-      ..id = _viewId;
+      ..style.height = '100%';
+    _applyScrolling();
+    _applyDocument();
 
-    // Register the view with Flutter web
-    // ignore: undefined_prefixed_name
-    ui_web.platformViewRegistry.registerViewFactory(
-      _viewId,
-      (int viewId) => _iframeElement,
-    );
+    ui_web.platformViewRegistry
+        .registerViewFactory(_viewType, (int _) => _iframe);
 
-    // Setup message listener for height updates
-    html.window.addEventListener('message', _handleMessage);
-
-    // Listen for height changes
-    _subscription = _heightStreamController.stream.listen(_updateHeight);
+    _messageListener = _onMessage.toJS;
+    _loadListener = _onLoad.toJS;
+    web.window.addEventListener('message', _messageListener);
+    _iframe.addEventListener('load', _loadListener);
   }
 
-  String _getHtmlContent() {
-    // Inject the script to measure content height
-    return '''
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-          <style>
-            body {
-              margin: 0;
-              padding: 0;
-              font-family: sans-serif;
-              overflow-x: hidden;
-              width: 100%;
-            }
-          </style>
-          <script type="text/javascript">
-            // Script to measure and report content height
-            function updateHeight() {
-              const height = Math.max(
-                document.body.scrollHeight,
-                document.body.offsetHeight,
-                document.documentElement.clientHeight,
-                document.documentElement.scrollHeight,
-                document.documentElement.offsetHeight
-              );
-              window.parent.postMessage({ type: 'resize', height: height }, '*');
-            }
-            
-            document.addEventListener('DOMContentLoaded', function() {
-              // Initial measurement
-              updateHeight();
-              
-              // Set up mutation observer to detect content changes
-              const observer = new MutationObserver(updateHeight);
-              observer.observe(document.body, { 
-                attributes: true, 
-                childList: true, 
-                subtree: true 
-              });
-              
-              // Handle window resize events
-              window.addEventListener('resize', updateHeight);
-              
-              // Handle image and media loading
-              window.addEventListener('load', updateHeight);
-              
-              // Add event listeners to all images
-              document.querySelectorAll('img').forEach(img => {
-                img.addEventListener('load', updateHeight);
-              });
-              
-              ${widget.customScript ?? ''}
-            });
-          </script>
-        </head>
-        <body>
-          ${widget.htmlContent}
-        </body>
-      </html>
-    ''';
-  }
-
-  void _handleMessage(html.Event event) {
-    if (event is html.MessageEvent) {
-      try {
-        final data = event.data;
-        if (data is Map && data['type'] == 'resize') {
-          final height = data['height'];
-          if (height is num) {
-            _heightStreamController.add(height.toDouble());
-          }
-        }
-      } catch (e) {
-        debugPrint('Error handling message: $e');
-      }
+  @override
+  void didUpdateWidget(AutoHeightWebView old) {
+    super.didUpdateWidget(old);
+    if (old.enableJavaScript != widget.enableJavaScript ||
+        old.htmlContent != widget.htmlContent ||
+        old.css != widget.css ||
+        old.baseUrl != widget.baseUrl ||
+        old.customScript != widget.customScript ||
+        old.useDefaultStyles != widget.useDefaultStyles ||
+        old.allowNavigation != widget.allowNavigation) {
+      _loading = true;
+      _applyDocument();
+    } else if (old.minHeight != widget.minHeight ||
+        old.maxHeight != widget.maxHeight) {
+      _applyHeight();
     }
-  }
-
-  void _updateHeight(double newHeight) {
-    if (newHeight != _height && mounted) {
-      setState(() {
-        _height = _constrainHeight(newHeight);
-        _iframeElement.style.height = '${_height}px';
-      });
-      widget.onHeightChanged?.call(_height);
-    }
-  }
-
-  double _constrainHeight(double height) {
-    double constrainedHeight = height;
-
-    if (height < widget.minHeight) {
-      constrainedHeight = widget.minHeight;
-    } else if (widget.maxHeight != null && height > widget.maxHeight!) {
-      constrainedHeight = widget.maxHeight!;
-    }
-
-    return constrainedHeight;
+    _applyScrolling();
   }
 
   @override
   void dispose() {
-    html.window.removeEventListener('message', _handleMessage);
-    _subscription?.cancel();
-    _heightStreamController.close();
+    web.window.removeEventListener('message', _messageListener);
+    _iframe.removeEventListener('load', _loadListener);
     super.dispose();
+  }
+
+  void _applyDocument() {
+    if (widget.enableJavaScript) {
+      _iframe.removeAttribute('sandbox');
+    } else {
+      // Scripts blocked; same-origin kept so styles/links behave normally.
+      _iframe.setAttribute('sandbox', 'allow-same-origin');
+    }
+    _iframe.srcdoc = buildHtmlDocument(
+      html: widget.htmlContent,
+      instanceId: _id,
+      transport: MeasurementTransport.parentWindow,
+      css: widget.css,
+      useDefaultStyles: widget.useDefaultStyles,
+      baseHref: widget.baseUrl,
+      customScript: widget.customScript,
+      interceptLinks: true,
+      allowNavigation: widget.allowNavigation,
+    ).toJS;
+  }
+
+  bool get _clamped {
+    final max = widget.maxHeight;
+    return max != null && _rawHeight > max;
+  }
+
+  void _applyScrolling() {
+    final scroll = widget.scrollWhenClamped && _clamped;
+    _iframe.style.overflow = scroll ? 'auto' : 'hidden';
+    _iframe.scrolling = scroll ? 'auto' : 'no';
+  }
+
+  void _onLoad(web.Event _) {
+    if (!mounted) return;
+    if (!widget.enableJavaScript) _measureFromParent();
+    setState(() => _loading = false);
+    widget.onPageFinished?.call();
+  }
+
+  /// Scripts are blocked in the sandboxed iframe, so measure it from here.
+  /// The iframe keeps `allow-same-origin`, which makes its document readable.
+  /// This happens once, at load.
+  void _measureFromParent() {
+    try {
+      final root = _iframe.contentDocument?.documentElement;
+      if (root == null) return;
+      final height = root.scrollHeight;
+      if (height <= 0) return;
+      _rawHeight = height.toDouble();
+      _applyHeight();
+      _applyScrolling();
+    } catch (_) {
+      // Document not readable: keep the current height.
+    }
+  }
+
+  void _onMessage(web.Event event) {
+    if (!mounted) return;
+    final data = (event as web.MessageEvent).data.dartify();
+    final parsed = parseMeasurementMessage(data, expectedId: _id);
+    if (parsed == null) return;
+    if (parsed.type == 'height') {
+      _rawHeight = parsed.height!;
+      _applyHeight();
+      _applyScrolling();
+    } else if (parsed.type == 'link') {
+      widget.onLinkTap?.call(parsed.url!);
+    }
+  }
+
+  void _applyHeight() {
+    final clamped = clampHeight(_rawHeight, _min, widget.maxHeight);
+    if (clamped == _height) return;
+    setState(() => _height = clamped);
+    widget.onHeightChanged?.call(clamped);
   }
 
   @override
   Widget build(BuildContext context) {
+    final loader = widget.loadingBuilder?.call(context) ??
+        const Center(child: CircularProgressIndicator());
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+      duration: widget.animationDuration,
+      curve: widget.animationCurve,
       height: _height,
-      constraints: BoxConstraints(
-        minHeight: widget.minHeight,
-        maxHeight: widget.maxHeight ?? double.infinity,
+      decoration:
+          widget.decoration ?? const BoxDecoration(color: Colors.transparent),
+      child: Stack(
+        children: [
+          Positioned.fill(child: HtmlElementView(viewType: _viewType)),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _loading
+                    ? KeyedSubtree(key: const ValueKey('loader'), child: loader)
+                    : const SizedBox.shrink(key: ValueKey('done')),
+              ),
+            ),
+          ),
+        ],
       ),
-      decoration: _safeDecoration,
-      child: HtmlElementView(viewType: _viewId),
     );
   }
 }
