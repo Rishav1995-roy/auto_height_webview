@@ -9,9 +9,12 @@
 
 A Flutter widget that renders HTML and sizes itself to the content. Drop it into a `ListView` or `Column` and it takes exactly the height the page needs, then keeps tracking it as images load, fonts swap in or scripts change the DOM. It works on Android, iOS, macOS and the web (iframe, WASM-compatible).
 
-<!-- Demo GIF placeholder: add doc/demo.gif and uncomment the line below.
-![Demo](doc/demo.gif)
--->
+![Demo](https://raw.githubusercontent.com/Rishav1995-roy/auto_height_webview/main/doc/demo.gif)
+
+<p>
+  <img src="https://raw.githubusercontent.com/Rishav1995-roy/auto_height_webview/main/doc/screenshot_light.png" width="300" alt="Light mode">
+  <img src="https://raw.githubusercontent.com/Rishav1995-roy/auto_height_webview/main/doc/screenshot_dark.png" width="300" alt="Dark mode">
+</p>
 
 ## Why
 
@@ -55,7 +58,7 @@ or in `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  auto_height_webview: ^0.0.2
+  auto_height_webview: ^0.0.3
 ```
 
 Requires Dart `^3.6.0` and Flutter `>=3.27.0`. Tested in CI on Flutter 3.27 and the latest stable (3.47 at release).

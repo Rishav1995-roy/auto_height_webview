@@ -1,3 +1,7 @@
+## 0.0.3
+
+* Docs: demo GIF and screenshots on pub.dev and in the README. No code changes.
+
 ## 0.0.2
 
 ### Added
