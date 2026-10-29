@@ -1,0 +1,61 @@
+name: Bug report
+description: Report something that does not work as documented
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please check the README and existing issues first.
+  - type: input
+    id: package-version
+    attributes:
+      label: Package version
+      description: The `auto_height_webview` version from your pubspec.lock.
+      placeholder: e.g. 1.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: env-version
+    attributes:
+      label: Flutter version
+      description: Paste the output of `flutter --version`.
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: platforms
+    attributes:
+      label: Platform(s)
+      description: Select every platform where you see the problem.
+      multiple: true
+      options:
+        - Android
+        - iOS
+        - Web
+        - macOS
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, and what did you expect?
+      description: Describe the actual behaviour and the behaviour you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproducible code sample
+      description: The smallest code that shows the problem. It should run on its own.
+      render: dart
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional)
+      description: Console output, stack traces or screenshots.
+      render: text
+    validations:
+      required: false

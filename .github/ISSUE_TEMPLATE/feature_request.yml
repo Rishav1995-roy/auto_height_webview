@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest an improvement or a new capability
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API
+      description: Sketch how you would like to use it, ideally with a short code example.
+      render: dart
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds or other packages you tried.
+    validations:
+      required: false

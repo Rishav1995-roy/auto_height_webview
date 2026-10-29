@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation (README)
+    url: https://github.com/Rishav1995-roy/auto_height_webview#readme
+    about: Usage guide and API overview. Please read it before opening an issue.
