@@ -37,6 +37,14 @@ jobs:
           flutter-version: ${{ matrix.version }}
           channel: stable
           cache: true
+      # The minimum-Flutter leg verifies the published PACKAGE only. example/ is a demo app that
+      # tracks latest dependencies (needs a newer Dart than the package supports), so it is
+      # analyzed and built on stable in its own job.
+      - if: matrix.label == '3.27.4'
+        run: |
+          rm -rf example
+          # Demo/smoke tests that import example/ code cannot run without it.
+          grep -rl --include='*.dart' -E '\.\./example/' lib test tool 2>/dev/null | xargs -r rm -v || true
       - run: flutter pub get
       # The formatter style changed in Dart 3.7, so only check it on latest stable.
       - if: matrix.label == 'stable'
