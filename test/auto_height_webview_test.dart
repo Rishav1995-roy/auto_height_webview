@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:auto_height_webview/auto_height_webview.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';

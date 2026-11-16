@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show Factory;
 import 'package:flutter/gestures.dart';
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 

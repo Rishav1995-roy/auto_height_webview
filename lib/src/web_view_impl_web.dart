@@ -4,6 +4,7 @@
 import 'dart:js_interop';
 import 'dart:ui_web' as ui_web;
 
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:web/web.dart' as web;
 
