@@ -1,3 +1,7 @@
+## 0.0.4
+
+* Keeps the full pub.dev static analysis score on Flutter 3.50 and later, which deprecates `package:flutter/material.dart`. No API or behavior changes.
+
 ## 0.0.3
 
 * Docs: demo GIF and screenshots on pub.dev and in the README. No code changes.

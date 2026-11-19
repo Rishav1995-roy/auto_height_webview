@@ -58,7 +58,7 @@ or in `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  auto_height_webview: ^0.0.3
+  auto_height_webview: ^0.0.4
 ```
 
 Requires Dart `^3.6.0` and Flutter `>=3.27.0`. Tested in CI on Flutter 3.27 and the latest stable (3.47 at release).
